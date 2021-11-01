@@ -30,7 +30,7 @@ def drt_login():
     driver.get(Link)
     driver.maximize_window()
     
-    drt_select()
+    
     
 def drt_select():
     partyname = '/html/body/div[1]/div/form/div[1]/div[4]/a'
@@ -43,7 +43,7 @@ def drt_select():
     drt_party = 'sha'
     driver.find_element(By.ID,'name').send_keys(drt_party)
     
-    bypass_captcha()
+    
     
 def bypass_captcha():
     with open('.//captcha.png', 'wb') as file:
@@ -58,7 +58,7 @@ def bypass_captcha():
     driver.find_element_by_xpath('//*[@id="captchatext"]/input').send_keys(txt)
     driver.find_element_by_id('submit1').click()
     
-    scrape_main()
+    
     
 def scrape_main():
    # with open("source.text","w") as file:
@@ -79,17 +79,57 @@ def scrape_main():
             count = 0
             
     #print(table_rows)
-    convert_to_df(headers,table_rows)
+    return headers,table_rows
     
 def convert_to_df(columns,rows):
     df = pd.DataFrame(rows, columns=columns)
-    print(df.head())
+    return df
     
+def scrape_detail_url(df, detail_url):
+    urls = []
+    for i in range(1,len(df.index)+1):
+        detail_xpath = "/html/body/div[1]/div/form/div[5]/div/div[2]/table/tbody/tr[{}]/td[9]/a".format(i)
+        attr = driver.find_element_by_xpath(detail_xpath).get_attribute('href')
+        url = detail_url + attr.split("'",2)[1]
+        urls.append(url)
+    df = df.drop('View More', 1)
+    df["Link for More Details"] = urls
+    return df
     
-    
+def scrape_details(df):
+    datalist = []
+    browser = webdriver.Chrome()
+    #wait = WebDriverWait(driver, 600)
+    for url in df["Link for More Details"].tolist():
+        browser.get(url)
+        browser.maximize_window()
+        text = browser.find_elements_by_tag_name('tr')
+        data = [x.text for x in text]
+        datalist.append(data)
+    df_data = pd.DataFrame(datalist)
+    return df_data
+        
+        
         
 if __name__=="__main__":
-    drt_login()       
+    drt_login()     
+    
+    drt_select()
+    
+    bypass_captcha()
+    
+    columns, rows = scrape_main()
+    
+    
+    df = convert_to_df(columns, rows)
+    
+    detail_url = "https://drt.gov.in/drtlive/Misdetailreport.php?no="
+    
+    df = scrape_detail_url(df,detail_url)
+    
+    df_data = scrape_details(df)
+    
+    
 
 
 
